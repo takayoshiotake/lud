@@ -1,4 +1,7 @@
 # lud
+
+![language](http://img.shields.io/badge/language-C++/11-lightgrey.svg?style=flat)
+
 List USB devices.
 
 ## Requirement
