@@ -27,6 +27,7 @@
 		12511CBB1E65B03600F96361 /* lud */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = lud; sourceTree = BUILT_PRODUCTS_DIR; };
 		12511CC61E65B0BD00F96361 /* libusb-1.0.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libusb-1.0.0.dylib"; path = "../../../../opt/local/lib/libusb-1.0.0.dylib"; sourceTree = "<group>"; };
 		12511CC81E65B89300F96361 /* lud.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = lud.cpp; path = src/lud.cpp; sourceTree = SOURCE_ROOT; };
+		12511CCA1E670EEF00F96361 /* bbusb.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; name = bbusb.hpp; path = src/bbusb.hpp; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -62,6 +63,7 @@
 			isa = PBXGroup;
 			children = (
 				12511CC81E65B89300F96361 /* lud.cpp */,
+				12511CCA1E670EEF00F96361 /* bbusb.hpp */,
 			);
 			path = lud;
 			sourceTree = "<group>";
