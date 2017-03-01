@@ -6,6 +6,10 @@
 //  Copyright © 2017 OTAKE Takayoshi. All rights reserved.
 //
 
+#include <string>
+#include <locale>
+#include <codecvt>
+
 #include <functional>
 #include <exception>
 #include <memory>
@@ -96,35 +100,52 @@ namespace bbusb {
                 });
                 
                 if (device_descriptor.iManufacturer != 0) {
-                    unsigned char temp[2];
-                    int rc;
-                    
-                    rc = libusb_get_string_descriptor(handle, device_descriptor.iManufacturer, 0, temp, 2);
-                    if (rc == 2) {
-                        unsigned char string[temp[0]];
-                        if (libusb_get_string_descriptor(handle, device_descriptor.iManufacturer, 0, string, temp[0]) == temp[0]) {
-                            
-                            // UTF16LE
-                            char* begin = (char*)&string[2];
-                            char* end = (char*)&string[string[0]-1];
-                            
-                            // TBD
-                            printf("    iManufacture: ");
-                            for (auto it = begin; it < end; ++it) {
-                                putchar(*it);
-                            }
-                            putchar('\n');
-                        }
-                    }
+                    std::string string = string_descriptor(handle, device_descriptor.iManufacturer);
+                    printf("    iManufacture: %s\n", string.c_str());
                 }
-                // TODO: iProduct
-                // TODO: iSerialNumber
+                if (device_descriptor.iProduct != 0) {
+                    std::string string = string_descriptor(handle, device_descriptor.iProduct);
+                    printf("    iProduct: %s\n", string.c_str());
+                }
+                if (device_descriptor.iSerialNumber != 0) {
+                    std::string string = string_descriptor(handle, device_descriptor.iSerialNumber);
+                    printf("    iSerialNumber: %s\n", string.c_str());
+                }
             } while (0);
             
             printf("    bNumConfigurations: %d\n", device_descriptor.bNumConfigurations);
         }
     private:
         libusb_device* device_;
+        
+        std::string string_descriptor(libusb_device_handle* handle, int index) {
+            unsigned char temp[2];
+            int rc;
+            
+            rc = libusb_get_string_descriptor(handle, index, 0, temp, 2);
+            if (rc == 2) {
+                unsigned char string[temp[0]];
+                if (libusb_get_string_descriptor(handle, index, 0, string, temp[0]) == temp[0]) {
+                    
+                    // Convert UTF16LE to UTF8 (std::wstring to std::string)
+                    char* begin = (char*)&string[2];
+                    char* end = (char*)&string[string[0]];
+                    if ((end - begin) % 2 == 0) {
+                        wchar_t utf16[(end - begin) / 2 + 1];
+                        for (int i = 0; i < sizeof(utf16)/sizeof(utf16[0]); ++i) {
+                            utf16[i] = begin[i*2+0] | (begin[i*2+1] << 8);
+                        }
+                        utf16[sizeof(utf16)/sizeof(utf16[0]) - 1] = 0;
+                        
+                        std::wstring ws(utf16);
+                        std::wstring_convert<std::codecvt_utf8<wchar_t>,wchar_t> cv;
+                        return cv.to_bytes(ws.c_str());
+                    }
+                }
+            }
+            
+            return "";
+        }
     };
 
     struct usb_manager {
