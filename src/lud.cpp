@@ -41,6 +41,41 @@ namespace bbusb {
         info,
         debug,
     };
+    
+    struct usb_device {
+        libusb_device_descriptor device_descriptor;
+        libusb_config_descriptor* config_descriptor;
+        
+        explicit usb_device(libusb_device* device) {
+            device_ = device;
+            libusb_ref_device(device_);
+            
+            int rc;
+            rc = libusb_get_device_descriptor(device_, &device_descriptor);
+            if (rc != LIBUSB_SUCCESS) {
+                throw rc;
+            }
+            rc = libusb_get_config_descriptor(device_, 0, &config_descriptor);
+            if (rc != LIBUSB_SUCCESS) {
+                throw rc;
+            }
+        }
+        
+        ~usb_device() {
+            libusb_free_config_descriptor(config_descriptor);
+            libusb_unref_device(device_);
+        }
+        
+        int id() {
+            return libusb_get_bus_number(device_) << 8 | libusb_get_device_address(device_);
+        }
+        
+        void print() {
+            printf("id=%d, vid=%04x, pid=%04x\n", id(), device_descriptor.idVendor, device_descriptor.idProduct);
+        }
+    private:
+        libusb_device* device_;
+    };
 
     struct usb_manager {
         libusb_context* ctx_ = nullptr;
@@ -88,9 +123,35 @@ namespace bbusb {
                     throw rc;
                 }
                 
-                printf("id=%04x, vid=%04x, pid=%04x", libusb_get_bus_number(dev) << 8 | libusb_get_device_address(dev), desc.idVendor, desc.idProduct);
+                printf("id=%d, vid=%04x, pid=%04x", libusb_get_bus_number(dev) << 8 | libusb_get_device_address(dev), desc.idVendor, desc.idProduct);
                 putchar('\n');
             }
+        }
+        
+        std::vector<std::shared_ptr<usb_device>> list_devices() {
+            std::vector<std::shared_ptr<usb_device>> devices;
+            
+            libusb_device** devs;
+            auto rc = libusb_get_device_list(ctx_, &devs);
+            if (rc < 0) {
+                throw rc;
+            }
+            scope_exit se1([devs](){
+                libusb_free_device_list(devs, 1);
+            });
+            
+            auto** dev_ptr = devs;
+            while (auto* dev = *dev_ptr++) {
+                struct libusb_device_descriptor desc;
+                auto rc = libusb_get_device_descriptor(dev, &desc);
+                if (rc < 0) {
+                    throw rc;
+                }
+                
+                devices.push_back(std::make_shared<usb_device>(dev));
+            }
+            
+            return devices;
         }
         
         /*
@@ -131,16 +192,16 @@ namespace bbusb {
         }
         
         /*
-         * - parameter _T_usb_device:
+         * - parameter _T_usb_device_handle:
          * - parameter device_id:
          *
          * - returns: device; null when failed to open device.
          *
-         * - see: `class usb_device`
+         * - see: `class usb_device_handle`
          */
-        template <class _T_usb_device>
-        std::shared_ptr<_T_usb_device> open(int device_id) {
-            std::shared_ptr<_T_usb_device> usb_device = nullptr;
+        template <class _T_usb_device_handle>
+        std::shared_ptr<_T_usb_device_handle> open(int device_id) {
+            std::shared_ptr<_T_usb_device_handle> usb_device_handle = nullptr;
             
             {
                 libusb_device** devs;
@@ -164,7 +225,7 @@ namespace bbusb {
                         }
                         
                         try {
-                            usb_device = std::make_shared<_T_usb_device>(this, dev, handle);
+                            usb_device_handle = std::make_shared<_T_usb_device_handle>(this, dev, handle);
                         }
                         catch (...) {
                             libusb_close(handle);
@@ -175,7 +236,7 @@ namespace bbusb {
                 }
             }
             
-            return usb_device;
+            return usb_device_handle;
         }
         
         void print_endpoints(libusb_device* device) {
@@ -212,16 +273,16 @@ namespace bbusb {
         usb_manager(const usb_manager&);
     };
     
-    class usb_device {
+    class usb_device_handle {
     protected:
         libusb_device_handle* handle_;
     public:
-        explicit usb_device(usb_manager* um, libusb_device* device, libusb_device_handle* handle) noexcept
+        explicit usb_device_handle(usb_manager* um, libusb_device* device, libusb_device_handle* handle) noexcept
         : handle_(handle) {
             um->print_endpoints(device);
         }
         
-        virtual ~usb_device() {
+        virtual ~usb_device_handle() {
             if (is_claimed_) {
                 try {
                     release_interface();
@@ -290,7 +351,12 @@ namespace bbusb {
 
 int main(int argc, const char * argv[]) {
     auto um = std::make_shared<bbusb::usb_manager>();
-    um->print_devices();
+//    um->print_devices();
+    
+    auto devices = um->list_devices();
+    for (auto device : devices) {
+        device->print();
+    }
     
 #ifdef TEST_MODE
     printf("\n");
@@ -302,23 +368,23 @@ int main(int argc, const char * argv[]) {
     if (ids.size() > 0) {
         auto device_id = ids.front();
         
-        auto device = um->open<bbusb::usb_device>(device_id);
-        if (device->is_kernel_driver_active()) {
-            device->detach_kernel_driver();
+        auto device_handle = um->open<bbusb::usb_device_handle>(device_id);
+        if (device_handle->is_kernel_driver_active()) {
+            device_handle->detach_kernel_driver();
         }
         
-        int configuration = device->get_configuration();
+        int configuration = device_handle->get_configuration();
         printf("configuration = %d\n", configuration);
         
         // Reset the device forcefully.
-        device->set_configuration(0);
-        device->set_configuration(1);
+        device_handle->set_configuration(0);
+        device_handle->set_configuration(1);
         
-        device->claim_interface();
+        device_handle->claim_interface();
         
         // ...
         
-        device->release_interface();
+        device_handle->release_interface();
     }
 #endif
     
