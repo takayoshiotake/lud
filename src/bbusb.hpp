@@ -3,7 +3,7 @@
 //  lud
 //
 //  Created by OTAKE Takayoshi on 2017/03/01.
-//  Copyright © 2017年 OTAKE Takayoshi. All rights reserved.
+//  Copyright © 2017 OTAKE Takayoshi. All rights reserved.
 //
 
 #ifndef bbusb_h
