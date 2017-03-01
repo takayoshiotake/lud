@@ -1,6 +1,6 @@
 # lud
 
-![language](http://img.shields.io/badge/language-C++/11-lightgrey.svg?style=flat)
+![language](http://img.shields.io/badge/language-C++/14-lightgrey.svg?style=flat)
 
 List USB devices.
 
