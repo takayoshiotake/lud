@@ -71,7 +71,57 @@ namespace bbusb {
         }
         
         void print() {
-            printf("id=%d, vid=%04x, pid=%04x\n", id(), device_descriptor.idVendor, device_descriptor.idProduct);
+            printf("device:\n");
+            printf("  id: %d\n", id());
+            printf("  device_descriptor:\n");
+            printf("    bcdUSB: 0x%04x\n", device_descriptor.bcdUSB);
+            printf("    bDeviceClass: %d\n", device_descriptor.bDeviceClass);
+            printf("    bDeviceSubClass: %d\n", device_descriptor.bDeviceSubClass);
+            printf("    bDeviceProtocol: %d\n", device_descriptor.bDeviceProtocol);
+            printf("    bMaxPacketSize0: %d\n", device_descriptor.bMaxPacketSize0);
+            printf("    idVendor: 0x%04x\n", device_descriptor.idVendor);
+            printf("    idProduct: 0x%04x\n", device_descriptor.idProduct);
+            printf("    bcdDevice: 0x%04x\n", device_descriptor.bcdDevice);
+            
+            do {
+                libusb_device_handle* handle;
+                int rc;
+                
+                rc = libusb_open(device_, &handle);
+                if (rc != LIBUSB_SUCCESS) {
+                    break;
+                }
+                scope_exit se1([handle](){
+                    libusb_close(handle);
+                });
+                
+                if (device_descriptor.iManufacturer != 0) {
+                    unsigned char temp[2];
+                    int rc;
+                    
+                    rc = libusb_get_string_descriptor(handle, device_descriptor.iManufacturer, 0, temp, 2);
+                    if (rc == 2) {
+                        unsigned char string[temp[0]];
+                        if (libusb_get_string_descriptor(handle, device_descriptor.iManufacturer, 0, string, temp[0]) == temp[0]) {
+                            
+                            // UTF16LE
+                            char* begin = (char*)&string[2];
+                            char* end = (char*)&string[string[0]-1];
+                            
+                            // TBD
+                            printf("    iManufacture: ");
+                            for (auto it = begin; it < end; ++it) {
+                                putchar(*it);
+                            }
+                            putchar('\n');
+                        }
+                    }
+                }
+                // TODO: iProduct
+                // TODO: iSerialNumber
+            } while (0);
+            
+            printf("    bNumConfigurations: %d\n", device_descriptor.bNumConfigurations);
         }
     private:
         libusb_device* device_;
