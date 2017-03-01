@@ -76,8 +76,21 @@ namespace bbusb {
         }
         
         void print() {
+            libusb_device_handle* handle = nullptr;
+            int rc;
+            
+            rc = libusb_open(device_, &handle);
+            if (rc != LIBUSB_SUCCESS) {
+            }
+            scope_exit se1([handle](){
+                if (handle != nullptr) {
+                    libusb_close(handle);
+                }
+            });
+            
             printf("device:\n");
             printf("  id: %d\n", id());
+            
             printf("  device_descriptor:\n");
             printf("    bcdUSB: 0x%04x\n", device_descriptor.bcdUSB);
             printf("    bDeviceClass: %d\n", device_descriptor.bDeviceClass);
@@ -87,34 +100,28 @@ namespace bbusb {
             printf("    idVendor: 0x%04x\n", device_descriptor.idVendor);
             printf("    idProduct: 0x%04x\n", device_descriptor.idProduct);
             printf("    bcdDevice: 0x%04x\n", device_descriptor.bcdDevice);
-            
-            do {
-                libusb_device_handle* handle;
-                int rc;
-                
-                rc = libusb_open(device_, &handle);
-                if (rc != LIBUSB_SUCCESS) {
-                    break;
-                }
-                scope_exit se1([handle](){
-                    libusb_close(handle);
-                });
-                
-                if (device_descriptor.iManufacturer != 0) {
-                    std::string string = string_descriptor(handle, device_descriptor.iManufacturer);
-                    printf("    iManufacture: %s\n", string.c_str());
-                }
-                if (device_descriptor.iProduct != 0) {
-                    std::string string = string_descriptor(handle, device_descriptor.iProduct);
-                    printf("    iProduct: %s\n", string.c_str());
-                }
-                if (device_descriptor.iSerialNumber != 0) {
-                    std::string string = string_descriptor(handle, device_descriptor.iSerialNumber);
-                    printf("    iSerialNumber: %s\n", string.c_str());
-                }
-            } while (0);
-            
+            if (device_descriptor.iManufacturer != 0) {
+                std::string string = string_descriptor(handle, device_descriptor.iManufacturer);
+                printf("    iManufacture: %s\n", string.c_str());
+            }
+            if (device_descriptor.iProduct != 0) {
+                std::string string = string_descriptor(handle, device_descriptor.iProduct);
+                printf("    iProduct: %s\n", string.c_str());
+            }
+            if (device_descriptor.iSerialNumber != 0) {
+                std::string string = string_descriptor(handle, device_descriptor.iSerialNumber);
+                printf("    iSerialNumber: %s\n", string.c_str());
+            }
             printf("    bNumConfigurations: %d\n", device_descriptor.bNumConfigurations);
+            printf("  config_descriptor:\n");
+            printf("    bNumInterfaces: %d\n", config_descriptor->bNumInterfaces);
+            printf("    bConfigurationValue: %d\n", config_descriptor->bConfigurationValue);
+            if (config_descriptor->iConfiguration != 0) {
+                std::string string = string_descriptor(handle, config_descriptor->iConfiguration);
+                printf("    iConfiguration: %s\n", string.c_str());
+            }
+            printf("    bmAttributes: 0x%02x\n", config_descriptor->bmAttributes);
+            printf("    bMaxPower: %dmA\n", config_descriptor->MaxPower * 2);
         }
     private:
         libusb_device* device_;
