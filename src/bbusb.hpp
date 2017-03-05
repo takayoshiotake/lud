@@ -131,7 +131,7 @@ namespace bbusb {
             int rc;
             
             rc = libusb_get_string_descriptor(handle, index, 0, temp, 2);
-            if (rc == 2) {
+            if (rc == 2 && temp[0] > 0) {
                 unsigned char string[temp[0]];
                 if (libusb_get_string_descriptor(handle, index, 0, string, temp[0]) == temp[0]) {
                     
